@@ -1,34 +1,32 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useQuery } from "react-query";
 
 function App() {
-    const [todos, setTodos] = useState([]);
+    const { data, isLoading } = useQuery(
+        "todos",
+        () => {
+            return axios
+                .get("http://localhost:8080/todos")
+                .then((response) => response.data);
+        },
+        {
+            retry: 4,
+            refetchOnWindowFocus: true,
+            refetchInterval: 5000,
+        }
+    );
 
-    const handleCLick = async (todoId, completed) => {
-        await axios.patch(`http://localhost:8080/todos/${todoId}`, {
-            completed,
-        });
-
-        const response = await axios.get("http://localhost:8080/todos");
-
-        setTodos(response.data);
-    };
-
-    useEffect(() => {
-        axios
-            .get("http://localhost:8080/todos")
-            .then((res) => setTodos(res.data));
-    }, []);
-
+    if (isLoading) {
+        return <div className="loading">Carregando...</div>;
+    }
     return (
         <div className="app-container">
             <div className="todos">
                 <h2>Todos & React Query</h2>
-                {todos.map((todo) => (
+                {data.map((todo) => (
                     <div
-                        onClick={() => handleCLick(todo.id, !todo.completed)}
-                        key={todo.id}
                         className={`todo ${todo.completed && "todo-completed"}`}
+                        key={todo.id}
                     >
                         {todo.title}
                     </div>
