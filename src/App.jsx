@@ -1,30 +1,53 @@
 import axios from "axios";
-import { useQuery } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 
 function App() {
-    const { data, isLoading } = useQuery(
-        "todos",
-        () => {
+    const queryClient = useQueryClient();
+
+    const { data, isLoading, error } = useQuery("todos", () => {
+        return axios
+            .get("http://localhost:8080/todos")
+            .then((response) => response.data);
+    });
+
+    const mutation = useMutation({
+        mutationFn: ({ todoId, completed }) => {
             return axios
-                .get("http://localhost:8080/todos")
+                .patch(`http://localhost:8080/todos/${todoId}`, {
+                    completed,
+                })
                 .then((response) => response.data);
         },
-        {
-            retry: 4,
-            refetchOnWindowFocus: true,
-            refetchInterval: 5000,
-        }
-    );
+        onSuccess: (data) => {
+            queryClient.setQueryData("todos", (currentData) =>
+                currentData.map((todo) => (todo.id === data.id ? data : todo))
+            );
+        },
+        onError: (error) => {
+            console.error(error);
+        },
+    });
 
     if (isLoading) {
         return <div className="loading">Carregando...</div>;
     }
+
+    if (error) {
+        return <div className="loading">Algo deu errado...</div>;
+    }
+
     return (
         <div className="app-container">
             <div className="todos">
                 <h2>Todos & React Query</h2>
                 {data.map((todo) => (
                     <div
+                        onClick={() =>
+                            mutation.mutate({
+                                todoId: todo.id,
+                                completed: !todo.completed,
+                            })
+                        }
                         className={`todo ${todo.completed && "todo-completed"}`}
                         key={todo.id}
                     >
